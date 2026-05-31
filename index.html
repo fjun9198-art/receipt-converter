@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>收据转换器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Microsoft YaHei",sans-serif;background:#0f1115;color:#e5e7eb;min-height:100vh;padding:14px}
+.app{max-width:720px;margin:auto}
+h1{text-align:center;font-size:22px;margin:8px 0 14px}
+.card{background:#161b22;border:1px solid #2b313b;border-radius:14px;padding:12px;margin-bottom:12px}
+label{display:block;font-size:14px;color:#9ca3af;margin-bottom:8px}
+textarea{width:100%;min-height:220px;resize:vertical;border:1px solid #374151;border-radius:12px;padding:12px;background:#0b0f14;color:#f9fafb;font-size:16px;line-height:1.45;outline:none;white-space:pre-wrap}
+textarea:focus{border-color:#60a5fa}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+button{border:0;border-radius:12px;padding:14px 10px;font-size:16px;font-weight:bold;cursor:pointer;color:white;background:#2563eb}
+button.danger{background:#991b1b}
+.hint{font-size:13px;color:#9ca3af;line-height:1.5;margin-top:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#22c55e;color:#052e16;padding:10px 16px;border-radius:999px;font-weight:bold;display:none;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>收据转换器</h1>
+
+<div class="card">
+<label for="input">贴供应商单据</label>
+<textarea id="input" placeholder="例如：
+260529 1859 (23)
+ellen88
+29/05
+*MPTSBKWHE
+1053=2B
+3501=2B
+GT=4
+
+Points:0013 6207 4105 1041"></textarea>
+<div class="hint">自动转换：加 (NS PD)、名字变 klly1、* 里面的 H 变 (6)、Points 号码用 - 连接。</div>
+</div>
+
+<div class="card">
+<label for="output">你的收据</label>
+<textarea id="output" readonly placeholder="这里会自动出现转换结果"></textarea>
+<div class="buttons">
+<button onclick="copyResult()">复制结果</button>
+<button class="danger" onclick="clearAll()">清空</button>
+</div>
+</div>
+</div>
+
+<div id="toast" class="toast">已复制</div>
+
+<script>
+const input=document.getElementById('input');
+const output=document.getElementById('output');
+const toast=document.getElementById('toast');
+
+input.addEventListener('input',convertText);
+
+function convertText(){
+  let text=input.value.trim();
+  if(!text){output.value='';return;}
+
+  let lines=text.split(/\r?\n/).map(line=>line.trimEnd());
+
+  if(lines[0]){
+    lines[0]=lines[0].replace(/^(\d{2})(\d{2})(\d{2})/,'$1.$2.$3');
+  }
+
+  if(lines.length>1){
+    lines[1]='klly1';
+  }
+
+  lines=lines.map(line=>{
+    if(line.trim().startsWith('*')){
+      return line.replace(/h/gi,'(6)');
+    }
+    return line;
+  });
+
+  lines=lines.map(line=>{
+    let clean=line.trim();
+    if(/^Points\s*:/i.test(clean)){
+      let afterColon=clean.replace(/^Points\s*:/i,'').trim();
+      let parts=afterColon.split(/[\s-]+/).filter(Boolean);
+      return 'Points:'+parts.join('-');
+    }
+    return line;
+  });
+
+  output.value='(NS PD)\n'+lines.join('\n');
+}
+
+async function copyResult(){
+  const text=output.value;
+  if(!text)return;
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast('已复制');
+  }catch(e){
+    output.select();
+    document.execCommand('copy');
+    showToast('已复制');
+  }
+}
+
+function clearAll(){
+  input.value='';
+  output.value='';
+  input.focus();
+}
+
+function showToast(msg){
+  toast.textContent=msg;
+  toast.style.display='block';
+  setTimeout(()=>toast.style.display='none',1400);
+}
+</script>
+</body>
+</html>
